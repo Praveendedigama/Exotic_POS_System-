@@ -3,7 +3,7 @@ import axios from 'axios';
 import { LayoutDashboard, ShoppingCart, Package, Plus, Trash2, Save, TrendingUp, RefreshCcw, FileText, Filter, Edit, Circle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://exotic-pos-system.onrender.com';
 
 // --- COLOR HELPER FUNCTION ---
 // නම අනුව පාට තීරණය කරන තැන
