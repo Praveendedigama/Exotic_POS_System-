@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LayoutDashboard, ShoppingCart, Package, Plus, Trash2, Save, TrendingUp, RefreshCcw, FileText, Filter, Edit, Circle } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Plus, Trash2, Save, TrendingUp, RefreshCcw, FileText, Filter, Edit, Menu, X } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+// PWA සහ Deploy කළ පසු backend එකට සම්බන්ධ වීමට
 const API_URL = 'https://exotic-pos-system.onrender.com/api';
 
-// --- COLOR HELPER FUNCTION ---
-// නම අනුව පාට තීරණය කරන තැන
 const getColor = (name) => {
   const n = name.toLowerCase();
-  if (n.includes('blue') || n.includes('white')) return '#3b82f6'; // White/Blue -> Blue Color
-  if (n.includes('red')) return '#ef4444';    // Red -> Red Color
-  if (n.includes('yellow')) return '#eab308'; // Yellow -> Yellow Color
-  if (n.includes('green')) return '#22c55e';  // Green -> Green Color
-  return '#94a3b8'; // Default Gray
+  if (n.includes('blue') || n.includes('white')) return '#3b82f6';
+  if (n.includes('red')) return '#ef4444';
+  if (n.includes('yellow')) return '#eab308';
+  if (n.includes('green')) return '#22c55e';
+  return '#94a3b8';
 };
 
 const App = () => {
@@ -21,6 +20,9 @@ const App = () => {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // [NEW] Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -37,26 +39,22 @@ const App = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-// --- UPDATED DASHBOARD COMPONENT ---
+  // --- DASHBOARD ---
   const Dashboard = () => {
     const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalStock = products.reduce((sum, p) => sum + p.stockCount, 0);
 
-// Pie Chart Data Logic (Updated Fix)
     const pieDataMap = {};
     sales.forEach(sale => {
       sale.items.forEach(item => {
         const colorName = item.colorName || 'Unknown';
-        // [FIX] parseInt දාපු නිසා පරණ string data තිබ්බත් අවුලක් යන්නේ නෑ
         const qty = parseInt(item.quantity) || 0; 
-        
         pieDataMap[colorName] = (pieDataMap[colorName] || 0) + qty;
       });
     });
     
     const pieChartData = Object.keys(pieDataMap).map(key => ({ name: key, value: pieDataMap[key] }));
 
-    // Custom Tooltip for Pie Chart
     const CustomTooltip = ({ active, payload }) => {
       if (active && payload && payload.length) {
         return (
@@ -71,14 +69,13 @@ const App = () => {
 
     return (
       <div className="space-y-6">
+        {/* Responsive Grid: 1 col on mobile, 3 on desktop */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Revenue */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
              <div><p className="text-gray-500 text-sm">Total Revenue</p><h3 className="text-2xl font-bold text-gray-800">Rs. {totalRevenue.toLocaleString()}</h3></div>
              <div className="p-3 bg-green-100 rounded-full text-green-600"><TrendingUp size={24} /></div>
           </div>
           
-          {/* Stock with COLORED DOTS */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-2">
               <div><p className="text-gray-500 text-sm">Total Stock Items</p><h3 className="text-2xl font-bold text-gray-800">{totalStock} units</h3></div>
@@ -97,32 +94,19 @@ const App = () => {
             </div>
           </div>
 
-          {/* Transactions */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
              <div><p className="text-gray-500 text-sm">Total Transactions</p><h3 className="text-2xl font-bold text-gray-800">{sales.length}</h3></div>
              <div className="p-3 bg-purple-100 rounded-full text-purple-600"><ShoppingCart size={24} /></div>
           </div>
         </div>
 
-        {/* IMPROVED PIE CHART */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
            <h3 className="text-lg font-semibold mb-4 text-gray-700 text-center">Sales Distribution by Color</h3>
            <div className="h-72 w-full flex justify-center">
              <ResponsiveContainer width="100%" height="100%">
                <PieChart>
-                 <Pie 
-                    data={pieChartData} 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius={60} 
-                    outerRadius={90} 
-                    paddingAngle={5} 
-                    dataKey="value"
-                    stroke="none"
-                 >
-                   {pieChartData.map((entry, index) => (
-                     <Cell key={`cell-${index}`} fill={getColor(entry.name)} />
-                   ))}
+                 <Pie data={pieChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
+                   {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={getColor(entry.name)} />))}
                  </Pie>
                  <Tooltip content={<CustomTooltip />} />
                  <Legend verticalAlign="bottom" height={36} iconType="circle"/>
@@ -134,37 +118,33 @@ const App = () => {
     );
   };
 
-  // --- TRANSACTIONS (With Filters) ---
+  // --- TRANSACTION HISTORY ---
   const TransactionHistory = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
 
-    // Filtering Logic
     const filteredSales = sales.filter(sale => {
       const saleDate = new Date(sale.date);
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
-
       const dateMatch = (!start || saleDate >= start) && (!end || saleDate <= end);
       const statusMatch = filterStatus === 'All' || sale.status === filterStatus;
-      
       return dateMatch && statusMatch;
     });
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-         <div className="p-6 border-b border-gray-100 flex flex-wrap gap-4 justify-between items-center">
-            <h3 className="text-xl font-bold text-gray-800">Transaction History</h3>
+         <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+            <h3 className="text-xl font-bold text-gray-800">History</h3>
             
-            {/* Filter Controls */}
-            <div className="flex flex-wrap gap-2 items-center bg-gray-50 p-2 rounded-lg">
+            <div className="flex flex-wrap gap-2 items-center bg-gray-50 p-2 rounded-lg w-full md:w-auto">
                <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><Filter size={12}/> Filter:</span>
-               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-sm border p-1 rounded" />
+               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-sm border p-1 rounded w-32" />
                <span className="text-gray-400">-</span>
-               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-sm border p-1 rounded" />
+               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-sm border p-1 rounded w-32" />
                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-sm border p-1 rounded">
-                  <option value="All">All Status</option>
+                  <option value="All">All</option>
                   <option value="Paid">Paid</option>
                   <option value="Credit">Credit</option>
                   <option value="Partial">Partial</option>
@@ -173,7 +153,7 @@ const App = () => {
             </div>
          </div>
          <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left whitespace-nowrap">
             <thead className="bg-gray-50 border-b text-sm uppercase text-gray-500">
               <tr>
                 <th className="p-4">Date</th>
@@ -187,7 +167,7 @@ const App = () => {
             </thead>
             <tbody className="text-sm">
               {filteredSales.map((sale) => {
-                const balance = sale.totalAmount - (sale.paidAmount || 0); // Handle old data
+                const balance = sale.totalAmount - (sale.paidAmount || 0);
                 return (
                   <tr key={sale._id} className="border-b hover:bg-gray-50">
                     <td className="p-4 text-gray-600">{sale.date}</td>
@@ -213,34 +193,32 @@ const App = () => {
     );
   };
 
-  // --- SALES POS (With Partial Payments) ---
+  // --- SALES POS ---
   const SalesPOS = () => {
     const [customer, setCustomer] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [cart, setCart] = useState([{ productId: '', qty: 1, price: 0 }]);
     const [paidAmount, setPaidAmount] = useState('');
 
- const updateCart = (idx, field, val) => {
-    const nc = [...cart];
-    if (field === 'productId') {
-      const p = products.find(x => x._id === val);
-      nc[idx].productId = val;
-      nc[idx].price = p ? p.unitPrice : 0;
-    } else if (field === 'qty') {
-      // [FIX] ඉලක්කමක් බවට පරිවර්තනය කිරීම
-      nc[idx][field] = parseInt(val) || 1; 
-    } else {
-      nc[idx][field] = val;
-    }
-    setCart(nc);
-  };
+    const updateCart = (idx, field, val) => {
+        const nc = [...cart];
+        if (field === 'productId') {
+        const p = products.find(x => x._id === val);
+        nc[idx].productId = val;
+        nc[idx].price = p ? p.unitPrice : 0;
+        } else if (field === 'qty') {
+        nc[idx][field] = parseInt(val) || 1; 
+        } else {
+        nc[idx][field] = val;
+        }
+        setCart(nc);
+    };
 
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     const balance = total - (parseFloat(paidAmount) || 0);
 
     const handleCheckout = async () => {
         if (!customer) return alert("Customer Name Required");
-        
         const paid = parseFloat(paidAmount) || 0;
         let status = 'Paid';
         if (paid === 0) status = 'Credit';
@@ -261,32 +239,33 @@ const App = () => {
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
            <h2 className="text-xl font-bold mb-4">New Transaction</h2>
-           <div className="grid grid-cols-2 gap-4 mb-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <input type="text" placeholder="Customer Name" value={customer} onChange={e=>setCustomer(e.target.value)} className="border p-2 rounded" />
               <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="border p-2 rounded" />
            </div>
-           {/* Cart Items */}
-           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+           
+           <div className="bg-gray-50 p-3 md:p-4 rounded-lg space-y-2">
               {cart.map((item, i) => (
-                 <div key={i} className="flex gap-2">
-                    <select className="border p-2 flex-1 rounded" value={item.productId} onChange={e=>updateCart(i,'productId',e.target.value)}>
+                 <div key={i} className="flex flex-col md:flex-row gap-2 border-b md:border-none pb-2 md:pb-0">
+                    <select className="border p-2 flex-1 rounded bg-white" value={item.productId} onChange={e=>updateCart(i,'productId',e.target.value)}>
                        <option value="">Select Product</option>
                        {products.map(p => <option key={p._id} value={p._id}>{p.colorName}</option>)}
                     </select>
-                    <input type="number" className="border p-2 w-20 rounded" value={item.qty} min="1" onChange={e=>updateCart(i,'qty',e.target.value)} />
-                    <input type="text" readOnly className="border p-2 w-32 bg-gray-200 rounded font-bold" value={item.price} />
-                    <button onClick={()=>setCart(cart.filter((_,idx)=>idx!==i))} className="text-red-500"><Trash2 size={18}/></button>
+                    <div className="flex gap-2">
+                        <input type="number" className="border p-2 w-20 rounded" value={item.qty} min="1" onChange={e=>updateCart(i,'qty',e.target.value)} placeholder="Qty" />
+                        <input type="text" readOnly className="border p-2 w-32 bg-gray-200 rounded font-bold" value={item.price} placeholder="Price" />
+                        <button onClick={()=>setCart(cart.filter((_,idx)=>idx!==i))} className="text-red-500 bg-red-50 p-2 rounded"><Trash2 size={18}/></button>
+                    </div>
                  </div>
               ))}
               <button onClick={()=>setCart([...cart,{productId:'',qty:1,price:0}])} className="text-blue-600 text-sm font-bold flex items-center gap-1 mt-2"><Plus size={16}/> Add Item</button>
            </div>
         </div>
 
-        {/* Payment Summary */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-           <h3 className="text-lg font-bold mb-4">Payment Details</h3>
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+           <h3 className="text-lg font-bold mb-4">Payment</h3>
            <div className="space-y-3 mb-6">
               <div className="flex justify-between text-xl font-bold"><span>Total:</span><span>Rs. {total.toLocaleString()}</span></div>
               <div>
@@ -294,7 +273,7 @@ const App = () => {
                  <input type="number" value={paidAmount} onChange={e=>setPaidAmount(e.target.value)} className="w-full border p-2 rounded focus:ring-2 ring-blue-500 font-bold text-green-700" placeholder="0" />
               </div>
               <div className="flex justify-between text-lg font-semibold text-red-600 pt-2 border-t">
-                 <span>Balance / Due:</span><span>Rs. {balance > 0 ? balance.toLocaleString() : 0}</span>
+                 <span>Balance:</span><span>Rs. {balance > 0 ? balance.toLocaleString() : 0}</span>
               </div>
               <div className="text-sm text-gray-500 text-right">Status: <span className="font-bold uppercase">{balance <= 0 ? 'Paid' : (parseFloat(paidAmount)>0 ? 'Partial' : 'Credit')}</span></div>
            </div>
@@ -304,14 +283,14 @@ const App = () => {
     );
   };
 
-  // --- INVENTORY (With Edit/Delete) ---
+  // --- INVENTORY ---
   const Inventory = () => {
     const [form, setForm] = useState({ id: null, colorName: '', unitWeight: '', unitPrice: '', stockCount: '' });
 
     const handleSave = async () => {
-       if (form.id) { // Edit
+       if (form.id) { 
           await axios.put(`${API_URL}/products/${form.id}`, form);
-       } else { // Create
+       } else { 
           await axios.post(`${API_URL}/products`, form);
        }
        setForm({ id: null, colorName: '', unitWeight: '', unitPrice: '', stockCount: '' });
@@ -320,21 +299,16 @@ const App = () => {
     };
 
     const handleDelete = async (id) => {
-       if(confirm("Are you sure you want to delete this product?")) {
+       if(confirm("Delete this product?")) {
           await axios.delete(`${API_URL}/products/${id}`);
           fetchData();
        }
     };
 
     const handleReset = async () => {
-        if(confirm("⚠️ අනතුරු ඇඟවීමයි!\n\nසියලුම දත්ත (Products සහ Transactions) මැකී යනු ඇත.\nඔබට විශ්වාසද?")) {
-            try {
-                await axios.post(`${API_URL}/reset`);
-                alert("System Reset Successful! 🗑️");
-                fetchData(); // Screen එක refresh කරන්න
-            } catch (error) {
-                alert("Reset Failed");
-            }
+        if(confirm("⚠️ System Reset: Delete ALL Data?")) {
+            try { await axios.post(`${API_URL}/reset`); alert("Reset Successful! 🗑️"); fetchData(); } 
+            catch (error) { alert("Reset Failed"); }
         }
     };
 
@@ -344,13 +318,10 @@ const App = () => {
 
     return (
         <div className="space-y-6">
-          {/* [NEW] RESET BUTTON SECTION */}
           <div className="flex justify-end">
-              <button onClick={handleReset} className="text-red-500 text-xs hover:bg-red-50 px-3 py-1 rounded border border-red-200 flex items-center gap-1">
-                  <Trash2 size={14}/> Factory Reset System
-              </button>
+              <button onClick={handleReset} className="text-red-500 text-xs hover:bg-red-50 px-3 py-1 rounded border border-red-200 flex items-center gap-1"><Trash2 size={14}/> Reset</button>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
              <h3 className="text-lg font-bold mb-4">{form.id ? 'Edit Product' : 'Add New Product'}</h3>
              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div><label className="text-xs text-gray-500">Color</label><input className="w-full border p-2 rounded" value={form.colorName} onChange={e=>setForm({...form, colorName:e.target.value})} placeholder="Ex: Blue" /></div>
@@ -363,8 +334,8 @@ const App = () => {
                 </div>
              </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-             <table className="w-full text-left">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+             <table className="w-full text-left whitespace-nowrap">
                 <thead className="bg-gray-50 border-b text-sm uppercase text-gray-500">
                    <tr><th className="p-4">Color</th><th className="p-4">Weight</th><th className="p-4">Price</th><th className="p-4">Stock</th><th className="p-4">Actions</th></tr>
                 </thead>
@@ -391,21 +362,37 @@ const App = () => {
     );
   };
 
+  // --- MAIN LAYOUT (UPDATED FOR MOBILE) ---
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-       <div className="w-64 bg-slate-900 text-white p-5 flex flex-col">
-          <h1 className="text-2xl font-bold mb-10 text-center tracking-wider">Exotic <span className="text-blue-400">POS</span></h1>
+    <div className="flex min-h-screen bg-gray-50 font-sans relative">
+       
+       {/* MOBILE HEADER */}
+       <div className="md:hidden absolute top-0 left-0 w-full bg-slate-900 text-white p-4 flex justify-between items-center z-10">
+          <h1 className="text-xl font-bold tracking-wider">Exotic <span className="text-blue-400">POS</span></h1>
+          <button onClick={()=>setIsSidebarOpen(!isSidebarOpen)}><Menu /></button>
+       </div>
+
+       {/* SIDEBAR (Responsive) */}
+       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white p-5 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex justify-between items-center mb-10">
+             <h1 className="text-2xl font-bold tracking-wider hidden md:block">Exotic <span className="text-blue-400">POS</span></h1>
+             <h1 className="text-2xl font-bold tracking-wider md:hidden">Menu</h1>
+             <button onClick={()=>setIsSidebarOpen(false)} className="md:hidden text-gray-400"><X /></button>
+          </div>
+          
           <nav className="flex-1 space-y-2">
-             <button onClick={()=>setActiveTab('dashboard')} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='dashboard'?'bg-blue-600':'hover:bg-slate-800'}`}><LayoutDashboard size={20}/> Dashboard</button>
-             <button onClick={()=>setActiveTab('sales')} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='sales'?'bg-blue-600':'hover:bg-slate-800'}`}><ShoppingCart size={20}/> Sales / POS</button>
-             <button onClick={()=>setActiveTab('transactions')} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='transactions'?'bg-blue-600':'hover:bg-slate-800'}`}><FileText size={20}/> Transactions</button>
-             <button onClick={()=>setActiveTab('inventory')} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='inventory'?'bg-blue-600':'hover:bg-slate-800'}`}><Package size={20}/> Inventory</button>
+             <button onClick={()=>{setActiveTab('dashboard'); setIsSidebarOpen(false)}} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='dashboard'?'bg-blue-600':'hover:bg-slate-800'}`}><LayoutDashboard size={20}/> Dashboard</button>
+             <button onClick={()=>{setActiveTab('sales'); setIsSidebarOpen(false)}} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='sales'?'bg-blue-600':'hover:bg-slate-800'}`}><ShoppingCart size={20}/> Sales / POS</button>
+             <button onClick={()=>{setActiveTab('transactions'); setIsSidebarOpen(false)}} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='transactions'?'bg-blue-600':'hover:bg-slate-800'}`}><FileText size={20}/> Transactions</button>
+             <button onClick={()=>{setActiveTab('inventory'); setIsSidebarOpen(false)}} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab==='inventory'?'bg-blue-600':'hover:bg-slate-800'}`}><Package size={20}/> Inventory</button>
           </nav>
        </div>
-       <div className="flex-1 p-8 overflow-y-auto">
-          <header className="flex justify-between mb-8">
-             <div className="flex items-center gap-4"><h2 className="text-2xl font-bold capitalize">{activeTab} Overview</h2><button onClick={fetchData} className="p-2 bg-white rounded-full shadow text-blue-600"><RefreshCcw size={18}/></button></div>
-             <div className="text-sm text-gray-500">{new Date().toDateString()}</div>
+
+       {/* MAIN CONTENT */}
+       <div className="flex-1 p-4 md:p-8 overflow-y-auto pt-16 md:pt-8 h-screen">
+          <header className="flex justify-between mb-8 items-center">
+             <div className="flex items-center gap-4"><h2 className="text-xl md:text-2xl font-bold capitalize">{activeTab} Overview</h2><button onClick={fetchData} className="p-2 bg-white rounded-full shadow text-blue-600"><RefreshCcw size={18}/></button></div>
+             <div className="text-xs md:text-sm text-gray-500 hidden md:block">{new Date().toDateString()}</div>
           </header>
           {loading ? <div className="text-center py-20 text-gray-500">Loading...</div> : (
              <>
