@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Save, Plus, Minus, Trash2, X } from 'lucide-react';
+import { Save, Plus, Minus, Trash2, X, FileText } from 'lucide-react';
 
 const SalesPOS = ({ products, fetchData, API_URL }) => {
   const [customer, setCustomer] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [note, setNote] = useState(''); // ✅ Note State එක
   const [cart, setCart] = useState([]); 
   
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [qty, setQty] = useState(1);
   const [paidAmount, setPaidAmount] = useState('');
 
-  // ✅ පාට Logic එක (Hex Codes)
   const getColor = (name) => {
     const n = name?.toLowerCase() || '';
     if (n.includes('blue') || n.includes('white')) return '#3b82f6';
@@ -44,7 +44,7 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
     }
     
     setQty(1);
-    setSelectedProduct(null); // බඩු එකතු කළාම Selection එක අයින් වෙනවා
+    setSelectedProduct(null);
   };
 
   const removeFromCart = (index) => {
@@ -68,6 +68,7 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
       status, 
       totalAmount: total, 
       paidAmount: paid,
+      note: note, // ✅ Note එක Backend එකට යවනවා
       items: cart.map(item => ({
         productId: item.productId,
         colorName: item.colorName,
@@ -79,7 +80,8 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
     try {
       await axios.post(`${API_URL}/transactions`, payload);
       alert("Sale Completed! ✅");
-      setCart([]); setCustomer(''); setPaidAmount(''); setSelectedProduct(null); setQty(1);
+      // Reset All
+      setCart([]); setCustomer(''); setPaidAmount(''); setNote(''); setSelectedProduct(null); setQty(1);
       fetchData(); 
     } catch (error) {
       alert("Sale Failed! Check connection.");
@@ -92,11 +94,10 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full items-start">
       
-      {/* --- LEFT CARD: NEW TRANSACTION (Inputs + Selection + Cart List) --- */}
+      {/* --- LEFT SIDE (PRODUCTS) --- */}
       <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold mb-6 text-gray-800">New Transaction</h2>
         
-        {/* 1. INPUTS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
                 <label className="text-xs font-bold text-gray-500 uppercase">Customer Name</label>
@@ -108,7 +109,7 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
             </div>
         </div>
 
-        {/* 2. PRODUCT COLOR SELECTION (The Balls) */}
+        {/* Product Selection */}
         <div className="mb-6">
             <label className="text-xs font-bold text-gray-400 uppercase mb-2 block tracking-wider">Select Product Color</label>
             <div className="flex flex-wrap gap-4">
@@ -121,35 +122,20 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
                             ${p.stockCount <= 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105'}
                         `}
                     >
-                        {/* THE BALL */}
-                        <div 
-                            className="w-14 h-14 rounded-full shadow-md flex items-center justify-center border-2 border-white ring-1 ring-gray-200"
-                            style={{ backgroundColor: getColor(p.colorName) }}
-                        >
-                            {/* Price Inside */}
-                            <span className="text-[10px] text-white font-bold drop-shadow-md">
-                                {(p.unitPrice/1000).toFixed(1)}k
-                            </span>
+                        <div className="w-14 h-14 rounded-full shadow-md flex items-center justify-center border-2 border-white ring-1 ring-gray-200" style={{ backgroundColor: getColor(p.colorName) }}>
+                            <span className="text-[10px] text-white font-bold drop-shadow-md">{(p.unitPrice/1000).toFixed(1)}k</span>
                         </div>
-                        
-                        {/* Name Below */}
                         <span className="text-xs font-bold text-gray-600 capitalize">{p.colorName}</span>
-
-                        {/* Stock Badge (Top Right) */}
-                        <span className={`absolute -top-1 -right-1 text-[10px] text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm ${p.stockCount > 0 ? 'bg-gray-800' : 'bg-red-500'}`}>
-                            {p.stockCount}
-                        </span>
+                        <span className={`absolute -top-1 -right-1 text-[10px] text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm ${p.stockCount > 0 ? 'bg-gray-800' : 'bg-red-500'}`}>{p.stockCount}</span>
                     </button>
                 ))}
             </div>
         </div>
 
-        {/* 3. SELECTION CONTROL PANEL (Appears only when clicked) */}
+        {/* Selection Panel */}
         <div className={`transition-all duration-300 overflow-hidden ${selectedProduct ? 'max-h-40 opacity-100 mb-8' : 'max-h-0 opacity-0 mb-0'}`}>
             {selectedProduct && (
                 <div className="bg-blue-50/80 p-4 rounded-xl border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-4">
-                    
-                    {/* Selected Info */}
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full border shadow-sm" style={{ backgroundColor: getColor(selectedProduct.colorName) }}></div>
                         <div>
@@ -157,31 +143,24 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
                             <p className="text-xs text-blue-600 font-bold">Available: {selectedProduct.stockCount}</p>
                         </div>
                     </div>
-
-                    {/* Stepper & Add Button */}
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200">
                             <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 py-2 hover:bg-gray-100 text-gray-600 font-bold">-</button>
                             <input type="number" value={qty} readOnly className="w-12 text-center font-bold text-gray-800 outline-none" />
                             <button onClick={() => setQty(Math.min(selectedProduct.stockCount, qty + 1))} className="px-4 py-2 hover:bg-gray-100 text-gray-600 font-bold">+</button>
                         </div>
-                        
-                        <button onClick={addToCart} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md shadow-blue-200 transition-all flex-1 md:flex-none">
-                            Add to Bill
-                        </button>
+                        <button onClick={addToCart} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md shadow-blue-200 transition-all flex-1 md:flex-none">Add to Bill</button>
                     </div>
                 </div>
             )}
         </div>
 
-        {/* 4. BILL ITEMS LIST (Cart) */}
+        {/* Bill Items */}
         <div className="border-t pt-4">
             <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">Bill Items</h4>
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {cart.length === 0 ? (
-                    <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 text-sm border border-dashed border-gray-200">
-                        No items added yet.
-                    </div>
+                    <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 text-sm border border-dashed border-gray-200">No items added yet.</div>
                 ) : (
                     cart.map((item, index) => (
                         <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 hover:bg-white hover:shadow-sm transition-all">
@@ -191,9 +170,7 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
                             </div>
                             <div className="flex items-center gap-4">
                                 <span className="font-bold text-gray-800">Rs. {(item.price * item.qty).toLocaleString()}</span>
-                                <button onClick={() => removeFromCart(index)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                    <X size={18}/>
-                                </button>
+                                <button onClick={() => removeFromCart(index)} className="text-gray-400 hover:text-red-500 transition-colors"><X size={18}/></button>
                             </div>
                         </div>
                     ))
@@ -202,51 +179,47 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
         </div>
       </div>
 
-      {/* --- RIGHT CARD: PAYMENT SUMMARY --- */}
+      {/* --- RIGHT SIDE (PAYMENT) --- */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:sticky lg:top-4">
         <h3 className="text-lg font-bold mb-6 text-gray-800">Payment Summary</h3>
         
         <div className="space-y-6">
-            {/* Total Display */}
             <div className="flex justify-between items-end">
                 <span className="text-gray-500 font-bold">Total Amount</span>
                 <span className="text-2xl font-black text-gray-800">Rs. {total.toLocaleString()}</span>
             </div>
             
-            {/* Paid Input */}
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <label className="text-xs text-blue-600 font-bold uppercase mb-1 block">Amount Paid (Rs)</label>
-                <input 
-                    type="number" 
-                    value={paidAmount} 
-                    onChange={e => setPaidAmount(e.target.value)} 
-                    className="w-full bg-white border border-blue-200 p-3 rounded-lg text-right font-bold text-xl outline-none focus:ring-2 ring-blue-400 text-gray-800" 
-                    placeholder="0" 
+                <input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} className="w-full bg-white border border-blue-200 p-3 rounded-lg text-right font-bold text-xl outline-none focus:ring-2 ring-blue-400 text-gray-800" placeholder="0" />
+            </div>
+
+            {/* ✅ Note Input Area */}
+            <div>
+                <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Note (Optional)</label>
+                <textarea 
+                    value={note} 
+                    onChange={e => setNote(e.target.value)} 
+                    className="w-full border border-gray-200 p-3 rounded-lg text-sm outline-none focus:ring-2 ring-gray-200 bg-gray-50 focus:bg-white resize-none" 
+                    placeholder="Add a short note..." 
+                    rows="2"
                 />
             </div>
 
-            {/* Balance & Status */}
             <div className="space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Balance Due</span>
-                    <span className={`text-lg font-bold ${balance > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                        Rs. {balance > 0 ? balance.toLocaleString() : 0}
-                    </span>
+                    <span className={`text-lg font-bold ${balance > 0 ? 'text-red-500' : 'text-green-600'}`}>Rs. {balance > 0 ? balance.toLocaleString() : 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Status</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                        ${balance <= 0 ? 'bg-green-100 text-green-700' : (parseFloat(paidAmount)>0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700')}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${balance <= 0 ? 'bg-green-100 text-green-700' : (parseFloat(paidAmount)>0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700')}`}>
                         {balance <= 0 ? 'Paid' : (parseFloat(paidAmount)>0 ? 'Partial' : 'Credit')}
                     </span>
                 </div>
             </div>
 
-            {/* Complete Button */}
-            <button 
-                onClick={handleCheckout} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
-            >
+            <button onClick={handleCheckout} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4">
                 <Save size={20}/> Complete Sale
             </button>
         </div>

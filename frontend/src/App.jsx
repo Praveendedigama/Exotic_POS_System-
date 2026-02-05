@@ -12,6 +12,7 @@ import Inventory from './components/Inventory';
 
 // Backend URL
 const API_URL = 'https://exotic-pos-system.onrender.com/api';
+// const API_URL = 'http://localhost:5000/api';
 
 const App = () => {
   const { user, isLoaded } = useUser();

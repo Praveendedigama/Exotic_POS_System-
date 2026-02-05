@@ -28,6 +28,8 @@ const TransactionSchema = new mongoose.Schema({
   totalAmount: Number,
   paidAmount: { type: Number, default: 0 },
   items: Array,
+  note: String,
+  repaymentHistory: [{ date: String, amount: Number }],
   isDeleted: { type: Boolean, default: false }, // [NEW] Soft Delete Flag
   isArchived: { type: Boolean, default: false }
 }, { timestamps: true });
@@ -133,6 +135,48 @@ app.put('/api/transactions/:id/delete', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// --- UPDATE TRANSACTION (REPAYMENT) ---
+app.put('/api/transactions/:id/repay', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const sale = await Transaction.findById(req.params.id);
+
+    if (!sale) return res.status(404).json({ message: "Transaction not found" });
+
+    const newPaidAmount = sale.paidAmount + parseFloat(amount);
+    if (newPaidAmount > sale.totalAmount) {
+      return res.status(400).json({ message: "Payment exceeds total amount!" });
+    }
+
+    // ✅ ගෙවන දිනය සහ ගාන වෙනම ලියලා තියාගන්නවා
+    const today = new Date().toISOString().split('T')[0];
+    sale.repaymentHistory.push({ date: today, amount: parseFloat(amount) });
+
+    sale.paidAmount = newPaidAmount;
+    sale.status = sale.paidAmount >= sale.totalAmount ? 'Paid' : 'Partial';
+
+    await sale.save();
+    res.json(sale);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// 3. UPDATE NOTE ROUTE (මේක අලුතින්ම එකතු කරන්න)
+app.put('/api/transactions/:id/note', async (req, res) => {
+  try {
+    const { note } = req.body;
+    await Transaction.findByIdAndUpdate(req.params.id, { note: note });
+    res.json({ message: "Note updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // --- 2. NEW ROUTES FOR BATCHES ---
 
 // Get All Past Batches
@@ -213,10 +257,10 @@ app.get('/api/sales', async (req, res) => {
 
 app.post('/api/transactions', async (req, res) => {
   try {
-    const { customerName, date, status, items, totalAmount, paidAmount } = req.body;
+    const { customerName, date, status, items, totalAmount, paidAmount, note } = req.body;
 
     const newTransaction = new Transaction({
-      customerName, date, status, items, totalAmount, paidAmount
+      customerName, date, status, items, totalAmount, paidAmount, note,
     });
     await newTransaction.save();
 
