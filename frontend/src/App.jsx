@@ -11,7 +11,7 @@ import TransactionHistory from './components/TransactionHistory';
 import Inventory from './components/Inventory';
 
 // Backend URL
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://exotic-pos-system.onrender.com/api';
 
 const App = () => {
   const { user, isLoaded } = useUser();
