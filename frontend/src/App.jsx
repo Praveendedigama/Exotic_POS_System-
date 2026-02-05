@@ -11,6 +11,7 @@ import TransactionHistory from './components/TransactionHistory';
 import Inventory from './components/Inventory';
 //update
 // Backend URL
+// UPDATED URL CHECK - 02
 const API_URL = 'https://exotic-pos-backend.onrender.com/api';
 // const API_URL = 'http://localhost:5000/api';
 
