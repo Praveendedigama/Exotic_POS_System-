@@ -4,7 +4,11 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*", // ඕනෑම තැනක ඉඳන් Access කරන්න දෙනවා (Vercel + Localhost)
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 
 mongoose.connect(process.env.MONGO_URI)
