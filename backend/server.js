@@ -47,7 +47,45 @@ const Batch = mongoose.model('Batch', BatchSchema);
 
 const Transaction = mongoose.model('Transaction', TransactionSchema);
 
+// --- USER SCHEMA ---
+
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true }, // සරලව තියමු (Real world එකේදී Encrypt කරන්න ඕන)
+  role: { type: String, enum: ['admin', 'manager', 'clerk'], default: 'clerk' } 
+});
+
+const User = mongoose.model('User', UserSchema);
+
+
+
 // --- ROUTES ---
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = await User.findOne({ username, password });
+    if (user) {
+      // Password match නම් user විස්තර යවන්න
+      res.json({ username: user.username, role: user.role }); 
+    } else {
+      res.status(401).json({ error: "Invalid Credentials" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Create New User (Admin Only)
+app.post('/api/users', async (req, res) => {
+  try {
+    const newUser = new User(req.body);
+    await newUser.save();
+    res.json(newUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // 1. Products (GET, POST, PUT, DELETE)
 app.get('/api/products', async (req, res) => {
@@ -198,13 +236,26 @@ app.post('/api/transactions', async (req, res) => {
 const PORT = 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// --- SYSTEM RESET ROUTE (DANGER ZONE) ---
-app.post('/api/reset', async (req, res) => {
-  try {
-    // await Product.deleteMany({});      // සියලුම බඩු මකන්න
-    await Transaction.deleteMany({});  // සියලුම බිල්පත් මකන්න
-    res.json({ message: "System Fully Reset" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// --- SYSTEM RESET ROUTE ---
+// app.post('/api/reset', async (req, res) => {
+//   try {
+//     // 1. Transactions (විකුණුම්) ඔක්කොම මකන්න
+//     await Transaction.deleteMany({});
+    
+//     // 2. Batch History (පරණ රෙකෝඩ්ස්) ඔක්කොම මකන්න
+//     await Batch.deleteMany({});
+    
+//     // 3. Products (Inventory) එකත් මකන්න ඕන නම් විතරක් මේ පේළිය uncomment කරන්න:
+//     // await Product.deleteMany({}); 
+
+//     // 4. Products වල Stock එක ආපහු බිංදුවට (0) හදන්න ඕන නම් මේක පාවිච්චි කරන්න (Optional)
+//     await Product.updateMany({}, { stockCount: 0 });
+
+//     console.log("♻️ System Data Cleared (Inventory Kept Safe)");
+//     res.json({ message: "Sales & History Cleared Successfully!" });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });

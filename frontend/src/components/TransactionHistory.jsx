@@ -1,28 +1,37 @@
 // src/components/TransactionHistory.jsx
 import React, { useState } from 'react';
-import { Filter, Trash2, FileText } from 'lucide-react';
+import { Filter, Trash2, FileText, Info } from 'lucide-react';
 
-const TransactionHistory = ({ sales, fetchData, API_URL }) => {
+// [UPDATE] role prop එක මෙතනට එකතු කළා
+const TransactionHistory = ({ sales, fetchData, API_URL, role }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showBin, setShowBin] = useState(false); 
 
   const filteredSales = sales.filter(sale => {
-    // [FIX] මෙන්න මේ කොටස තමයි අපි වෙනස් කළේ.
-    // Archived (පරණ Batch වලට ගිය) ඒවා අයින් කරන්න (!sale.isArchived) එකතු කළා.
-
+    // 1. Recycle Bin Logic
     if (showBin) {
-        // Recycle Bin එක බලනකොට: Delete කරපු ඒවා විතරක් පෙන්නන්න (Active හෝ Archived ඒවා අදාළ නෑ)
         if (!sale.isDeleted) return false;
     } else {
-        // Normal List එක බලනකොට: 
-        // 1. Delete කරපු ඒවා පෙන්නන්න එපා (!sale.isDeleted)
-        // 2. Batch End කරපු (Archived) ඒවා පෙන්නන්න එපා (!sale.isArchived)
         if (sale.isDeleted || sale.isArchived) return false; 
     }
 
-    // Date & Status Filter
+    // [NEW] 📅 7 DAYS RESTRICTION FOR STAFF & MANAGER
+    // Admin නොවන ඕනෑම කෙනෙක්ට (Staff/Manager) දින 7ක සීමාව දානවා
+    if (role !== 'admin') {
+        const saleDate = new Date(sale.date);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // වෙලාවන් (Time) ප්‍රශ්නයක් නොවෙන්න දිනේ මුලටම සෙට් කරනවා
+        sevenDaysAgo.setHours(0, 0, 0, 0); 
+        saleDate.setHours(0, 0, 0, 0);
+
+        // දවස් 7ට වඩා පරණයි නම් පෙන්නන්න එපා
+        if (saleDate < sevenDaysAgo) return false;
+    }
+
+    // 2. Date & Status Filter (User Manual Filters)
     const saleDate = new Date(sale.date);
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
@@ -35,7 +44,6 @@ const TransactionHistory = ({ sales, fetchData, API_URL }) => {
   const handleDelete = async (id) => {
       if(confirm("Are you sure you want to delete this transaction? (It will move to Recycle Bin)")) {
           try {
-              // Localhost URL එක හරිද බලන්න, නැත්නම් props හරහා එන API_URL පාවිච්චි කරන්න
               await fetch(`${API_URL}/transactions/${id}/delete`, { method: 'PUT' });
               fetchData(); 
           } catch (error) {
@@ -47,18 +55,28 @@ const TransactionHistory = ({ sales, fetchData, API_URL }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
        <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-          <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-gray-800">
-                  {showBin ? 'Recycle Bin 🗑️' : 'Transaction History'}
-              </h3>
-              
-              <button 
-                  onClick={() => setShowBin(!showBin)}
-                  className={`text-xs px-3 py-1 rounded-full border flex items-center gap-1 font-bold transition-colors
-                  ${showBin ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-100'}`}
-              >
-                  {showBin ? <><FileText size={12}/> View Active</> : <><Trash2 size={12}/> Recycle Bin</>}
-              </button>
+          <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-gray-800">
+                    {showBin ? 'Recycle Bin 🗑️' : 'Transaction History'}
+                </h3>
+                
+                <button 
+                    onClick={() => setShowBin(!showBin)}
+                    className={`text-xs px-3 py-1 rounded-full border flex items-center gap-1 font-bold transition-colors
+                    ${showBin ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-100'}`}
+                >
+                    {showBin ? <><FileText size={12}/> View Active</> : <><Trash2 size={12}/> Recycle Bin</>}
+                </button>
+              </div>
+
+              {/* [NEW] පණිවිඩය: Staff/Manager අයට පේනවා සීමා කර ඇති බව */}
+              {/* {role !== 'admin' && !showBin && (
+                  <div className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded w-fit">
+                      <Info size={12}/>
+                      <span>Limited View: Showing last 7 days only</span>
+                  </div>
+              )} */}
           </div>
           
           {!showBin && (
@@ -93,7 +111,7 @@ const TransactionHistory = ({ sales, fetchData, API_URL }) => {
           </thead>
           <tbody className="text-sm">
             {filteredSales.length === 0 ? (
-                <tr><td colSpan="8" className="p-8 text-center text-gray-400">No records found.</td></tr>
+                <tr><td colSpan="8" className="p-8 text-center text-gray-400">No records found {role !== 'admin' ? '(in last 7 days)' : ''}.</td></tr>
             ) : (
               filteredSales.map((sale) => {
                   const balance = sale.totalAmount - (sale.paidAmount || 0);
@@ -114,13 +132,18 @@ const TransactionHistory = ({ sales, fetchData, API_URL }) => {
                       </td>
                       {!showBin && (
                           <td className="p-4">
-                              <button 
-                                  onClick={() => handleDelete(sale._id)}
-                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                                  title="Move to Recycle Bin"
-                              >
-                                  <Trash2 size={16}/>
-                              </button>
+                              {/* Delete Button එක Admin/Manager ට විතරක් දෙමු (Safety First) */}
+                              {role === 'admin' ? (
+                                  <button 
+                                      onClick={() => handleDelete(sale._id)}
+                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                      title="Move to Recycle Bin"
+                                  >
+                                      <Trash2 size={16}/>
+                                  </button>
+                              ) : (
+                                <span className="text-gray-300 text-xs italic">Read-only</span>
+                              )}
                           </td>
                       )}
                   </tr>

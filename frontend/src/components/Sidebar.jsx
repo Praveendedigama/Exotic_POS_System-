@@ -1,7 +1,19 @@
 import React from 'react';
-import { LayoutDashboard, ShoppingCart, Package, FileText, Menu, X } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, History, Menu, X } from 'lucide-react';
+// History icon එක import කරන්න අමතක කරන්න එපා
 
-const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen }) => {
+// [FIX 1] මෙතනට 'role' prop එක එකතු කළා
+const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, role }) => {
+
+  // Menu Items Array එක (Logic එක මෙතන)
+  const menuItems = [
+    // Staff නෙවෙයි නම් විතරක් Dashboard පෙන්නන්න
+    ...(role !== 'staff' ? [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
+    { id: 'sales', label: 'Sales / POS', icon: ShoppingCart },
+    { id: 'transactions', label: 'History', icon: History },
+    { id: 'inventory', label: 'Inventory', icon: Package },
+  ];
+
   return (
     <>
       {/* MOBILE HEADER */}
@@ -10,7 +22,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen }) =
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}><Menu /></button>
       </div>
 
-      {/* SIDEBAR (Responsive) */}
+      {/* SIDEBAR CONTAINER */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white p-5 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex justify-between items-center mb-10">
           <h1 className="text-2xl font-bold tracking-wider hidden md:block">Exotic <span className="text-blue-400">POS</span></h1>
@@ -18,11 +30,25 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen }) =
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-gray-400"><X /></button>
         </div>
         
+        {/* [FIX 2] Hardcode නොකර, Array එක Map කිරීම */}
         <nav className="flex-1 space-y-2">
-          <button onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false) }} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab === 'dashboard' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}><LayoutDashboard size={20} /> Dashboard</button>
-          <button onClick={() => { setActiveTab('sales'); setIsSidebarOpen(false) }} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab === 'sales' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}><ShoppingCart size={20} /> Sales / POS</button>
-          <button onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false) }} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab === 'transactions' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}><FileText size={20} /> Transactions</button>
-          <button onClick={() => { setActiveTab('inventory'); setIsSidebarOpen(false) }} className={`w-full flex gap-3 p-3 rounded-lg ${activeTab === 'inventory' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}><Package size={20} /> Inventory</button>
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { 
+                setActiveTab(item.id); 
+                setIsSidebarOpen(false); 
+              }} 
+              className={`w-full flex gap-3 p-3 rounded-lg transition-all items-center font-medium
+                ${activeTab === item.id 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+            >
+              <item.icon size={20} /> 
+              {item.label}
+            </button>
+          ))}
         </nav>
       </div>
     </>

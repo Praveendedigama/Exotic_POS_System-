@@ -15,7 +15,7 @@ const getColor = (name) => {
 };
 
 const Dashboard = ({ sales, products, fetchData, API_URL }) => {
-  // [LOGIC] Active Sales විතරක් ගන්න (Deleted ඒවා සහ Archived ඒවා අයින් කරන්න)
+  // [LOGIC] Active Sales විතරක් ගන්න
   const activeSales = sales.filter(sale => !sale.isDeleted && !sale.isArchived);
   
   // Batch History Data
@@ -32,12 +32,11 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
     }
   };
 
-  // Initial Fetch for Batches
   useEffect(() => { 
     fetchBatches(); 
-  }, [sales]); // Sales වෙනස් වුනාම Batch list එකත් update වෙන්න පුළුවන්
+  }, [sales]); 
 
-  // --- CALCULATIONS (Active Sales Only) ---
+  // --- CALCULATIONS ---
   let totalSalesVal = 0;
   let totalCollected = 0;
   let totalDue = 0;
@@ -78,11 +77,11 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
   // --- HANDLER: END BATCH ---
   const handleEndBatch = async () => {
     if (activeSales.length === 0) return alert("No active sales to archive!");
-    if (confirm("⚠️ Are you sure you want to END this batch?\n\nThis will:\n1. Move all current sales to 'History'\n2. Reset Revenue to 0\n3. Start a fresh dashboard\n\n(Stock count will remain unchanged)")) {
+    if (confirm("⚠️ Are you sure you want to END this batch?\n\nThis will:\n1. Move all current sales to 'History'\n2. Reset Revenue to 0\n3. Start a fresh dashboard")) {
       try {
         await axios.post(`${API_URL}/batches/end`);
         alert("Batch Ended Successfully! 🎉");
-        fetchData(); // Refresh Data
+        fetchData(); 
         fetchBatches();
       } catch (error) {
         alert("Failed to end batch");
@@ -114,48 +113,50 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
         </div>
       </div>
 
-      {/* --- HISTORY VIEW (Modal / Expand) --- */}
+      {/* --- HISTORY VIEW (SCROLLABLE TABLE) --- */}
       {showHistory && (
         <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100 animation-fade-in mb-6">
           <h3 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">📦 Batch History (Past Records)</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 uppercase">
+          
+          {/* 👇 SCROLLABLE CONTAINER (max-h-96 added) */}
+          <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-100 rounded-lg">
+            <table className="w-full text-left text-sm relative">
+              {/* 👇 STICKY HEADER (sticky top-0 z-10 added) */}
+              <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-3">Batch Name</th>
-                  <th className="p-3">Period</th>
-                  <th className="p-3">Item Breakdown</th>
-                  <th className="p-3 text-right">Total Sales</th>
-                  <th className="p-3 text-right">Collected</th>
-                  <th className="p-3 text-right">Due</th>
+                  <th className="p-3 bg-gray-100">Batch Name</th>
+                  <th className="p-3 bg-gray-100">Period</th>
+                  <th className="p-3 bg-gray-100">Item Breakdown</th>
+                  <th className="p-3 bg-gray-100 text-right">Total Sales</th>
+                  <th className="p-3 bg-gray-100 text-right">Collected</th>
+                  <th className="p-3 bg-gray-100 text-right">Due</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {batches.length === 0 ? 
-                  <tr><td colSpan="6" className="p-4 text-center text-gray-400">No past batches found.</td></tr> : 
+                  <tr><td colSpan="6" className="p-8 text-center text-gray-400">No past batches found.</td></tr> : 
                   batches.map(b => (
-                    <tr key={b._id} className="border-b hover:bg-gray-50 align-top">
+                    <tr key={b._id} className="hover:bg-blue-50/50 transition-colors align-top">
                       <td className="p-3 font-bold text-gray-700">{b.batchName}</td>
                       <td className="p-3 text-gray-500 text-xs">
-                        <div>{b.startDate}</div>
-                        <div>to {b.endDate}</div>
+                        <div className="font-mono">{b.startDate}</div>
+                        <div className="text-[10px] text-gray-400">to {b.endDate}</div>
                       </td>
                       
-                      {/* ITEM BREAKDOWN COLUMN */}
                       <td className="p-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
                           {b.itemsSummary && Object.entries(b.itemsSummary).map(([color, qty]) => (
-                            <span key={color} className="text-xs px-2 py-1 rounded bg-gray-100 border border-gray-200 font-medium text-gray-600">
-                              {color}: <span className="font-bold text-gray-900">{qty}</span>
+                            <span key={color} className="text-[10px] px-1.5 py-0.5 rounded border bg-white border-gray-200 text-gray-600 shadow-sm">
+                              {color}: <b>{qty}</b>
                             </span>
                           ))}
                           {(!b.itemsSummary || Object.keys(b.itemsSummary).length === 0) && <span className="text-gray-400 text-xs">-</span>}
                         </div>
                       </td>
 
-                      <td className="p-3 text-right font-bold">Rs. {b.totalSales.toLocaleString()}</td>
-                      <td className="p-3 text-right text-green-600">Rs. {b.totalCollected.toLocaleString()}</td>
-                      <td className="p-3 text-right text-red-500">Rs. {b.totalDue.toLocaleString()}</td>
+                      <td className="p-3 text-right font-bold text-gray-800">Rs. {b.totalSales.toLocaleString()}</td>
+                      <td className="p-3 text-right text-green-600 font-medium">Rs. {b.totalCollected.toLocaleString()}</td>
+                      <td className="p-3 text-right text-red-500 font-medium">Rs. {b.totalDue.toLocaleString()}</td>
                     </tr>
                   ))
                 }
@@ -201,7 +202,7 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
           </div>
           <div className="pt-4 border-t border-gray-100 space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
             {products.map(p => (
-              <div key={p._id} className="flex items-center justify-between text-sm">
+              <div key={p._id} className="flex items-center justify-between text-sm hover:bg-gray-50 p-1 rounded transition-colors">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: getColor(p.colorName) }}></div>
                   <span className="text-gray-600 font-medium">{p.colorName}</span>

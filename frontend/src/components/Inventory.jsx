@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Save, Edit } from 'lucide-react';
-
-// [REMOVE] මේ පේළිය මකන්න, දැන් අපි මේක App.jsx එකෙන් එවනවා.
-// const API_URL = 'http://localhost:5000/api'; 
+import { Trash2, Save, Edit, Lock, RefreshCcw } from 'lucide-react';
 
 const getColor = (name) => {
-  const n = name.toLowerCase();
+  const n = name?.toLowerCase() || '';
   if (n.includes('blue') || n.includes('white')) return '#3b82f6';
   if (n.includes('red')) return '#ef4444';
   if (n.includes('yellow')) return '#eab308';
@@ -14,103 +11,146 @@ const getColor = (name) => {
   return '#94a3b8';
 };
 
-// [CHANGE] මෙතනට API_URL එක props විදිහට ගන්න
-const Inventory = ({ products, fetchData, API_URL }) => {
+const Inventory = ({ products, fetchData, API_URL, role }) => {
   const [form, setForm] = useState({ id: null, colorName: '', unitWeight: '', unitPrice: '', stockCount: '' });
 
+  // ✅ [FIX] Inventory Tab එකට ආපු ගමන් Data Refresh වෙන්න
+  // useEffect(() => {
+  //   fetchData();
+  // }, []);
+
   const handleSave = async () => {
-    if (form.id) { 
-      // දැන් මෙයා පාවිච්චි කරන්නේ App.jsx එකෙන් එවපු ලින්ක් එක
-      await axios.put(`${API_URL}/products/${form.id}`, form);
-    } else { 
-      await axios.post(`${API_URL}/products`, form);
+    if (role === 'staff') return alert("Access Denied: Staff cannot add/edit items.");
+    
+    if(!form.colorName || !form.unitPrice || !form.stockCount) {
+        return alert("Please fill all required fields!");
     }
-    setForm({ id: null, colorName: '', unitWeight: '', unitPrice: '', stockCount: '' });
-    fetchData();
-    alert(form.id ? "Updated! ✅" : "Added! ✅");
+
+    try {
+      if (form.id) { 
+        await axios.put(`${API_URL}/products/${form.id}`, form);
+        alert("Updated! ✅");
+      } else { 
+        await axios.post(`${API_URL}/products`, form);
+        alert("Added! ✅");
+      }
+      setForm({ id: null, colorName: '', unitWeight: '', unitPrice: '', stockCount: '' });
+      fetchData();
+    } catch (error) {
+      alert("Error saving product");
+    }
   };
 
   const handleDelete = async (id) => {
+    if (role === 'staff') return alert("Access Denied");
     if(confirm("Delete this product?")) {
-      await axios.delete(`${API_URL}/products/${id}`);
-      fetchData();
-    }
-  };
-
-  const handleReset = async () => {
-    if(confirm("⚠️ System Reset: Delete ALL Data?")) {
-      try { 
-        await axios.post(`${API_URL}/reset`); 
-        alert("Reset Successful! 🗑️"); 
-        fetchData(); 
-      } 
-      catch (error) { 
-        alert("Reset Failed"); 
+      try {
+        await axios.delete(`${API_URL}/products/${id}`);
+        fetchData();
+      } catch (error) {
+        alert("Delete Failed");
       }
     }
   };
 
+  const handleReset = async () => {
+    if (role !== 'admin') return alert("Admin Only!");
+    if(confirm("⚠️ FACTORY RESET: Delete ALL Data?")) {
+      try { await axios.post(`${API_URL}/reset`); alert("System Reset! 🗑️"); fetchData(); } 
+      catch (error) { alert("Reset Failed"); }
+    }
+  };
+
   const handleEdit = (p) => {
+    if (role === 'staff') return alert("Access Denied");
     setForm({ id: p._id, colorName: p.colorName, unitWeight: p.unitWeight, unitPrice: p.unitPrice, stockCount: p.stockCount });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <button onClick={handleReset} className="text-red-500 text-xs hover:bg-red-50 px-3 py-1 rounded border border-red-200 flex items-center gap-1"><Trash2 size={14}/> Reset</button>
+      {/* HEADER ACTIONS */}
+      <div className="flex justify-between items-center">
+         <h3 className="text-xl font-bold text-gray-800">Inventory Management</h3>
+         {role === 'admin' && (
+            <button onClick={handleReset} className="text-red-500 text-xs border border-red-200 px-3 py-1 rounded hover:bg-red-50 flex gap-1 items-center">
+                <Trash2 size={12}/> Reset System
+            </button>
+         )}
       </div>
-      <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="text-lg font-bold mb-4">{form.id ? 'Edit Product' : 'Add New Product'}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div>
-            <label className="text-xs text-gray-500">Color</label>
-            <input className="w-full border p-2 rounded" value={form.colorName} onChange={e=>setForm({...form, colorName:e.target.value})} placeholder="Ex: Blue" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Weight</label>
-            <input className="w-full border p-2 rounded" type="number" value={form.unitWeight} onChange={e=>setForm({...form, unitWeight:e.target.value})} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Price</label>
-            <input className="w-full border p-2 rounded" type="number" value={form.unitPrice} onChange={e=>setForm({...form, unitPrice:e.target.value})} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Stock</label>
-            <input className="w-full border p-2 rounded" type="number" value={form.stockCount} onChange={e=>setForm({...form, stockCount:e.target.value})} />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleSave} className="bg-green-600 text-white p-2 rounded w-full flex justify-center items-center gap-1"><Save size={16}/> {form.id ? 'Update' : 'Add'}</button>
-            {form.id && <button onClick={()=>setForm({id:null, colorName:'', unitWeight:'', unitPrice:'', stockCount:''})} className="bg-gray-500 text-white p-2 rounded">Cancel</button>}
+
+      {/* FORM AREA */}
+      {role !== 'staff' ? (
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Color</label>
+              <input className="w-full border p-2 rounded mt-1" value={form.colorName} onChange={e=>setForm({...form, colorName:e.target.value})} placeholder="Ex: Blue" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Weight</label>
+              <input className="w-full border p-2 rounded mt-1" type="number" value={form.unitWeight} onChange={e=>setForm({...form, unitWeight:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Price</label>
+              <input className="w-full border p-2 rounded mt-1" type="number" value={form.unitPrice} onChange={e=>setForm({...form, unitPrice:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Stock</label>
+              <input className="w-full border p-2 rounded mt-1" type="number" value={form.stockCount} onChange={e=>setForm({...form, stockCount:e.target.value})} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleSave} className="bg-green-600 text-white p-2 rounded w-full flex justify-center items-center gap-1 font-bold shadow-sm hover:bg-green-700">
+                <Save size={16}/> {form.id ? 'Update' : 'Add'}
+              </button>
+              {form.id && <button onClick={()=>setForm({id:null, colorName:'', unitWeight:'', unitPrice:'', stockCount:''})} className="bg-gray-500 text-white p-2 rounded font-bold">Cancel</button>}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-left whitespace-nowrap">
-          <thead className="bg-gray-50 border-b text-sm uppercase text-gray-500">
+      ) : (
+        <div >
+            {/* <Lock size={20} /> */}
+            {/* <span className="font-medium text-sm">Inventory is Read-Only for Staff.</span> */}
+        </div>
+      )}
+
+      {/* TABLE AREA */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 border-b text-xs uppercase text-gray-500 font-bold">
             <tr>
               <th className="p-4">Color</th>
               <th className="p-4">Weight</th>
               <th className="p-4">Price</th>
               <th className="p-4">Stock</th>
-              <th className="p-4">Actions</th>
+              {role !== 'staff' && <th className="p-4">Actions</th>}
             </tr>
           </thead>
-          <tbody>
-            {products.map(p => (
-              <tr key={p._id} className="border-b hover:bg-gray-50">
-                <td className="p-4 flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full border" style={{backgroundColor: getColor(p.colorName)}}></div>
-                  <span className="font-medium">{p.colorName}</span>
-                </td>
-                <td className="p-4">{p.unitWeight}g</td>
-                <td className="p-4">Rs. {p.unitPrice}</td>
-                <td className="p-4">{p.stockCount}</td>
-                <td className="p-4 flex gap-2">
-                  <button onClick={()=>handleEdit(p)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit size={16}/></button>
-                  <button onClick={()=>handleDelete(p._id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
-                </td>
-              </tr>
-            ))}
+          <tbody className="text-sm">
+            {products.length === 0 ? (
+                <tr><td colSpan="5" className="p-6 text-center text-gray-400">Loading or Empty...</td></tr>
+            ) : (
+                products.map(p => (
+                <tr key={p._id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-4 flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full border shadow-sm" style={{backgroundColor: getColor(p.colorName)}}></div>
+                    <span className="font-bold text-gray-700 capitalize">{p.colorName}</span>
+                    </td>
+                    <td className="p-4">{p.unitWeight}g</td>
+                    <td className="p-4 font-medium">Rs. {p.unitPrice}</td>
+                    <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${p.stockCount < 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                            {p.stockCount}
+                        </span>
+                    </td>
+                    {role !== 'staff' && (
+                        <td className="p-4 flex gap-2">
+                        <button onClick={()=>handleEdit(p)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit size={16}/></button>
+                        <button onClick={()=>handleDelete(p._id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
+                        </td>
+                    )}
+                </tr>
+                ))
+            )}
           </tbody>
         </table>
       </div>
