@@ -280,26 +280,26 @@ app.post('/api/transactions', async (req, res) => {
 const PORT = 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// --- SYSTEM RESET ROUTE ---
-// app.post('/api/reset', async (req, res) => {
-//   try {
-//     // 1. Transactions (විකුණුම්) ඔක්කොම මකන්න
-//     await Transaction.deleteMany({});
+//--- SYSTEM RESET ROUTE ---
+app.post('/api/reset', async (req, res) => {
+  try {
+    // 1. Transactions (විකුණුම්) ඔක්කොම මකන්න
+    await Transaction.deleteMany({});
     
-//     // 2. Batch History (පරණ රෙකෝඩ්ස්) ඔක්කොම මකන්න
-//     await Batch.deleteMany({});
+    // 2. Batch History (පරණ රෙකෝඩ්ස්) ඔක්කොම මකන්න
+    await Batch.deleteMany({});
     
-//     // 3. Products (Inventory) එකත් මකන්න ඕන නම් විතරක් මේ පේළිය uncomment කරන්න:
-//     // await Product.deleteMany({}); 
+    // 3. Products (Inventory) එකත් මකන්න ඕන නම් විතරක් මේ පේළිය uncomment කරන්න:
+    // await Product.deleteMany({}); 
 
-//     // 4. Products වල Stock එක ආපහු බිංදුවට (0) හදන්න ඕන නම් මේක පාවිච්චි කරන්න (Optional)
-//     await Product.updateMany({}, { stockCount: 0 });
+    // 4. Products වල Stock එක ආපහු බිංදුවට (0) හදන්න ඕන නම් මේක පාවිච්චි කරන්න (Optional)
+    //await Product.updateMany({}, { stockCount: 0 });
 
-//     console.log("♻️ System Data Cleared (Inventory Kept Safe)");
-//     res.json({ message: "Sales & History Cleared Successfully!" });
+    console.log("♻️ System Data Cleared (Inventory Kept Safe)");
+    res.json({ message: "Sales & History Cleared Successfully!" });
 
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
