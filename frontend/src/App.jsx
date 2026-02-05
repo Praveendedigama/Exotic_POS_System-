@@ -9,9 +9,9 @@ import Dashboard from './components/Dashboard';
 import SalesPOS from './components/SalesPOS';
 import TransactionHistory from './components/TransactionHistory';
 import Inventory from './components/Inventory';
-//update check
+//update
 // Backend URL
-const API_URL = 'https://exotic-pos-system.onrender.com/api';
+const API_URL = 'https://exotic-pos-backend.onrender.com/api';
 // const API_URL = 'http://localhost:5000/api';
 
 const App = () => {
