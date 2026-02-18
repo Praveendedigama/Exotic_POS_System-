@@ -8,6 +8,8 @@ const getColor = (name) => {
   if (n.includes('red')) return '#ef4444';
   if (n.includes('yellow')) return '#eab308';
   if (n.includes('green')) return '#22c55e';
+  if (n.includes('black')) return '#1f2937';
+  if (n.includes('purple')) return '#9333ea';
   return '#94a3b8';
 };
 
@@ -115,44 +117,50 @@ const Inventory = ({ products, fetchData, API_URL, role }) => {
 
       {/* TABLE AREA */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b text-xs uppercase text-gray-500 font-bold">
-            <tr>
-              <th className="p-4">Color</th>
-              <th className="p-4">Weight</th>
-              <th className="p-4">Price</th>
-              <th className="p-4">Stock</th>
-              {role !== 'staff' && <th className="p-4">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {products.length === 0 ? (
-                <tr><td colSpan="5" className="p-6 text-center text-gray-400">Loading or Empty...</td></tr>
-            ) : (
-                products.map(p => (
-                <tr key={p._id} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="p-4 flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full border shadow-sm" style={{backgroundColor: getColor(p.colorName)}}></div>
-                    <span className="font-bold text-gray-700 capitalize">{p.colorName}</span>
-                    </td>
-                    <td className="p-4">{p.unitWeight}g</td>
-                    <td className="p-4 font-medium">Rs. {p.unitPrice}</td>
-                    <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${p.stockCount < 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                            {p.stockCount}
-                        </span>
-                    </td>
-                    {role !== 'staff' && (
-                        <td className="p-4 flex gap-2">
-                        <button onClick={()=>handleEdit(p)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit size={16}/></button>
-                        <button onClick={()=>handleDelete(p._id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
-                        </td>
-                    )}
-                </tr>
-                ))
-            )}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-gray-50 border-b text-xs uppercase text-gray-500 font-bold">
+              <tr>
+                <th className="p-3 md:p-4">Color</th>
+                <th className="p-3 md:p-4">Weight</th>
+                <th className="p-3 md:p-4">Price</th>
+                <th className="p-3 md:p-4">Stock</th>
+                {role !== 'staff' && <th className="p-3 md:p-4">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {products.length === 0 ? (
+                  <tr><td colSpan="5" className="p-6 text-center text-gray-400">Loading or Empty...</td></tr>
+              ) : (
+                  products.map(p => (
+                  <tr key={p._id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="p-3 md:p-4">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full border shadow-sm flex-shrink-0" style={{backgroundColor: getColor(p.colorName)}}></div>
+                          <span className="font-bold text-gray-700 capitalize text-xs md:text-sm">{p.colorName}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 md:p-4 text-xs md:text-sm">{p.unitWeight}g</td>
+                      <td className="p-3 md:p-4 font-medium text-xs md:text-sm">Rs. {p.unitPrice}</td>
+                      <td className="p-3 md:p-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${p.stockCount < 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                              {p.stockCount}
+                          </span>
+                      </td>
+                      {role !== 'staff' && (
+                          <td className="p-3 md:p-4">
+                            <div className="flex gap-1 md:gap-2">
+                              <button onClick={()=>handleEdit(p)} className="text-blue-500 hover:bg-blue-50 p-1.5 md:p-2 rounded"><Edit size={14} className="md:w-4 md:h-4"/></button>
+                              <button onClick={()=>handleDelete(p._id)} className="text-red-500 hover:bg-red-50 p-1.5 md:p-2 rounded"><Trash2 size={14} className="md:w-4 md:h-4"/></button>
+                            </div>
+                          </td>
+                      )}
+                  </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

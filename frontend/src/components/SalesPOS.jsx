@@ -18,6 +18,8 @@ const SalesPOS = ({ products, fetchData, API_URL }) => {
     if (n.includes('red')) return '#ef4444';
     if (n.includes('yellow')) return '#eab308';
     if (n.includes('green')) return '#22c55e';
+    if (n.includes('black')) return '#1f2937';
+    if (n.includes('purple')) return '#9333ea';
     return '#94a3b8';
   };
 

@@ -46,7 +46,13 @@ const BatchSchema = new mongoose.Schema({
   totalCollected: Number,
   totalDue: Number,
   transactionCount: Number,
-  itemsSummary: { type: Object, default: {} }
+  itemsSummary: { type: Object, default: {} },
+  customerDebts: [{ 
+    customerName: String, 
+    totalAmount: Number, 
+    paidAmount: Number, 
+    balance: Number 
+  }]
 }, { timestamps: true });
 
 const Batch = mongoose.model('Batch', BatchSchema);
@@ -204,17 +210,37 @@ app.post('/api/batches/end', async (req, res) => {
     let totalDue = 0;
     // [NEW] Item Counting Logic
     let itemsSummary = {}; 
+    // [NEW] Customer Debt Tracking
+    let customerDebtsMap = {};
 
     const startDate = activeTransactions[0].date;
     const endDate = new Date().toISOString().split('T')[0];
 
     activeTransactions.forEach(t => {
        const paid = t.paidAmount !== undefined ? t.paidAmount : (t.status === 'Paid' ? t.totalAmount : 0);
+       const balance = t.totalAmount - paid;
+       
        totalSales += t.totalAmount;
        totalCollected += paid;
-       totalDue += (t.totalAmount - paid);
+       totalDue += balance;
 
-       // [NEW] Loop through items and count colors
+       // Track customer debts (only if they owe money)
+       if (balance > 0) {
+         if (customerDebtsMap[t.customerName]) {
+           customerDebtsMap[t.customerName].totalAmount += t.totalAmount;
+           customerDebtsMap[t.customerName].paidAmount += paid;
+           customerDebtsMap[t.customerName].balance += balance;
+         } else {
+           customerDebtsMap[t.customerName] = {
+             customerName: t.customerName,
+             totalAmount: t.totalAmount,
+             paidAmount: paid,
+             balance: balance
+           };
+         }
+       }
+
+       // Loop through items and count colors
        t.items.forEach(item => {
            const color = item.colorName || 'Unknown';
            const qty = parseInt(item.quantity) || parseInt(item.qty) || 0;
@@ -236,7 +262,8 @@ app.post('/api/batches/end', async (req, res) => {
       totalCollected,
       totalDue,
       transactionCount: activeTransactions.length,
-      itemsSummary // [NEW] Save the calculated summary
+      itemsSummary,
+      customerDebts: Object.values(customerDebtsMap)
     });
     
     await newBatch.save();

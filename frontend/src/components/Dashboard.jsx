@@ -11,6 +11,8 @@ const getColor = (name) => {
   if (n.includes('red')) return '#ef4444';
   if (n.includes('yellow')) return '#eab308';
   if (n.includes('green')) return '#22c55e';
+  if (n.includes('black')) return '#1f2937';
+  if (n.includes('purple')) return '#9333ea';
   return '#94a3b8';
 };
 
@@ -127,6 +129,7 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
                   <th className="p-3 bg-gray-100">Batch Name</th>
                   <th className="p-3 bg-gray-100">Period</th>
                   <th className="p-3 bg-gray-100">Item Breakdown</th>
+                  <th className="p-3 bg-gray-100">Customer Debts</th>
                   <th className="p-3 bg-gray-100 text-right">Total Sales</th>
                   <th className="p-3 bg-gray-100 text-right">Collected</th>
                   <th className="p-3 bg-gray-100 text-right">Due</th>
@@ -134,7 +137,7 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {batches.length === 0 ? 
-                  <tr><td colSpan="6" className="p-8 text-center text-gray-400">No past batches found.</td></tr> : 
+                  <tr><td colSpan="7" className="p-8 text-center text-gray-400">No past batches found.</td></tr> : 
                   batches.map(b => (
                     <tr key={b._id} className="hover:bg-blue-50/50 transition-colors align-top">
                       <td className="p-3 font-bold text-gray-700">{b.batchName}</td>
@@ -152,6 +155,21 @@ const Dashboard = ({ sales, products, fetchData, API_URL }) => {
                           ))}
                           {(!b.itemsSummary || Object.keys(b.itemsSummary).length === 0) && <span className="text-gray-400 text-xs">-</span>}
                         </div>
+                      </td>
+
+                      <td className="p-3">
+                        {b.customerDebts && b.customerDebts.length > 0 ? (
+                          <div className="space-y-1 max-w-xs">
+                            {b.customerDebts.map((debt, idx) => (
+                              <div key={idx} className="text-[11px] bg-red-50 border border-red-100 px-2 py-1 rounded">
+                                <div className="font-bold text-gray-700">{debt.customerName}</div>
+                                <div className="text-red-600 font-semibold">Owes: Rs. {debt.balance.toLocaleString()}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-green-600 text-xs font-semibold">✓ All Paid</span>
+                        )}
                       </td>
 
                       <td className="p-3 text-right font-bold text-gray-800">Rs. {b.totalSales.toLocaleString()}</td>
